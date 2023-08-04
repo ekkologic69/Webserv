@@ -9,47 +9,42 @@
 #include <sys/types.h>
 #include "../webserv.hpp"
 
+//#include "../response.hpp"
+
+class response;
 enum StatusCode {
     OK = 200,
     NOT_FOUND = 404,
     INTERNAL_SERVER_ERROR = 500
 };
-
 class request{
-    private:
+    public:
         std::string _method;
+        response *_res;
         std::string _uri;
         std::string _httpV;
         std::map<std::string, std::string> _headers;
         std::string _body;
         std::string _serverName;
         std::string _locPath;
+        location_obj _loc; // location dialna
         int         _fd;
-        // double     _content_lenght;  
+        unsigned long     _content_lenght;  
         StatusCode statusCode;
         bool _isdone;
+        // response GetRes() const 
+        // {
+        //     return _res;
+        // };
 
 
     public:
-        request();
-        request& operator=(const request& copy)
-        {
-            if (this != &copy)
-            {
-                this->_method = copy._method;
-                this->_uri = copy._uri;
-                this->_httpV = copy._httpV;
-                this->_headers = copy._headers;
-                this->_body = copy._body;
-                this->_serverName = copy._serverName;
-                this->_locPath = copy._locPath;
-                this->_fd = copy._fd;
-                this->statusCode = copy.statusCode;
-                this->_isdone = copy._isdone;
-            }
-            return (*this);
+        request() {
+        //_res = new response();
+    }
+        ~request(){
+          //  delete _res;
         };
-        ~request();
 
         std::string getMethod() const;
         std::string getUri() const;
@@ -60,6 +55,8 @@ class request{
         std::string getServerName() const;
         std::string getLocPath() const;
         int         getFd() const;
+        location_obj getLoc() const;
+        unsigned long         getContentLenght() const;
         bool        getIsDone() const;
 
         void setMethod(const std::string& method);
@@ -70,13 +67,17 @@ class request{
         void setStatusCode(const StatusCode& statuscode);
         void setServerName(const std::string& serverName);
         void setFd(const int& fd);
+        void setContentLenght(const unsigned long& content_lenght);
+        void setLoc(const location_obj& loc);
         void setLocPath(const std::string& path);
         void setIsDone(const bool& isdone);
         int  analyzeRequest() const;
         void matchLocation(std::string uri, client clt, int sck);
-        request pRequest(const std::string& input, client clt, int sck);
+        void clear();
 };
 
-//void pRequest(const std::string& buffer, client clt, int sck);
+request pRequest(std::string& buffer, client clt, int sck);
+bool MethodPost(request& req, client clt);
 
 #endif
+

@@ -2,9 +2,11 @@
 #include <sstream>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <netdb.h>
 #include <set>
+#include "request/prequest.hpp"
+#include "response.hpp"
+
 // void sendResponse(int clientSocket, const std::string& content, const std::string& contentType) {
 // 	// std::cout << "\n\n" << content << "\n\n" << std::endl;
 //     std::string response =
@@ -77,12 +79,10 @@ int	ft_new_connex(int sck, std::set<int> &acceptedSockets, int &MAX_FD, fd_set &
 
 int main(int ac, char **av)
 {
-	request req;
 	fd_set read_fds, read_master_fds, write_fds, write_master_fds, accpted_fd;
 	FD_ZERO(&read_master_fds);
 	FD_ZERO(&write_master_fds);
 	FD_ZERO(&accpted_fd);
-
 
 	Server	server;
 	client	clt;
@@ -99,6 +99,7 @@ int main(int ac, char **av)
 		int		sck;
 		int		MAX_FD;
 		int		sck_fd;
+		request req;
 		sockaddr_in	address;
 		while (i < server.size())
 		{
@@ -112,7 +113,9 @@ int main(int ac, char **av)
 		std::set<int> acceptedSockets;
 		MAX_FD = sck_fd;
 		sck = 0;
-		char buffer[1024] = {0};
+		// char buffer[1025] = {0};
+		std::string buffer;
+		buffer.resize(1024);
 
 		while(1)
 		{
@@ -131,10 +134,31 @@ int main(int ac, char **av)
 				{
 					if(acceptedSockets.find(sck) == acceptedSockets.end())
 						sck = ft_new_connex(sck, acceptedSockets, MAX_FD, read_master_fds, clt);
-					ret_read = read(sck , buffer, 1024);
+					ret_read = read(sck , (void *)buffer.c_str(), 1024);
 					std::cout << " request sie >>>>> " << ret_read << std::endl;
-					printf("%s\n",buffer); //BUFFER_new IS THE REQUEST TO PARSS A KHAY SBA333333
-					req = req.pRequest(buffer, clt, sck);
+					//std::cout << buffer << std::endl;
+					std::cout << "to parsing >>>>>>>>>>>" <<  std::endl;
+					 req = pRequest(buffer, clt, sck);
+					std::cout << "Name: " << req.getServerName() << std::endl;
+					std::cout << "FD: " << req.getFd() << std::endl;
+					std::cout << "Method: " << req.getMethod() << std::endl;
+					std::cout << "URI: " << req.getUri() << std::endl;
+					std::cout << "HTTP Version: " << req.getHttpV() << std::endl;
+					std::cout << "Headers: " << std::endl;
+					std::map<std::string, std::string> headers = req.getHeaders();
+					for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it) {
+						std::cout << it->first << ": " << it->second << std::endl;
+					}
+				 std::cout << "BODY=====>: " << req.getBody()<< std::endl;
+					//allocate req._res
+					req._res = new response();
+					req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
+					req._res->set_get_con_type(req);
+					req._res->setContentLenght(req);
+					std::cout << "locPath : " << req.getLocPath() << std::endl;
+					std::cout << "location object : " << req._loc.get_location() << std::endl;
+					buffer.clear();
+					buffer.resize(1024);
 					if(ret_read < 1024)
 					{
 						std::cout << "send" << std::endl;
@@ -145,18 +169,19 @@ int main(int ac, char **av)
 				}
 				else if(FD_ISSET(sck, &write_fds))
 				{
-					// std::cout << " URI"<<req.getUri()<<"URI"<<std::endl;
-					// if (isDirectory(req.getUri())) {
-   					//      std::cout << req.getUri() << " is a directory." << std::endl;
-   					//  } else {
-   					//      std::cout << req.getUri() << " is a file." << std::endl;
-   					//  }
-					
-						Getmethod(req);
-					write(sck , "HTTP/1.1 200 KO\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!" , 74);
+					//SendResponse(sck);  
+					// std::cout << "STATUS CODE ================>"<<req._res->getStatusCode()<< std::endl;
+					// std::cout <<"CONTENT-LENGHT==========>" <<req._res->getContentLenght()<< std::endl;;
+					// std::cout << "CONTENT-TYPE==========>" <<req._res->getContentType()<< std::endl;
+					req._res->Send(sck, req);
+					//write(sck , "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!" , 74);
 					printf("\n------------------Hello message sent-------------------\n");
 					std::cout << "sck eares >>>> " << sck << std::endl;
-					close(sck);
+					// if(req._res->getIsDone() == true)
+					// {
+						close(sck);
+						// close(req._res->get_fd());
+					// }
 					acceptedSockets.erase(sck);
 					clt.erase(sck);
 					FD_CLR(sck, &write_master_fds);

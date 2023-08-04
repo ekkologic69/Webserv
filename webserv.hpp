@@ -13,11 +13,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+// #include "response.hpp"
 
 #include "config_file/config_file.hpp"
 typedef std::map<int, Server_obj> client;
 #include "socket/socket.hpp"
-#include "request/prequest.hpp"
+// #include "request/prequest.hpp"
 
-void    Getmethod(request &req);
+//void    GetMethod(location_obj &location,request &req);
 #endif
