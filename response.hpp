@@ -7,28 +7,40 @@
 #include <fcntl.h>
 #include "webserv.hpp"
 //  class request;
-#include "request/prequest.hpp"
+#define BUFF_SIZE 66000
+// #include "request/prequest.hpp"
+class request;
+
 class response
 {
-    private:
-     char *buff;
-     int fd;
-    // std::string     _path;
-    int            headers;
+    public:
+        std::vector<std::string>    _env;
+        pid_t pid;
+        int status;
+        std::string Content_Lenght_cgi;
+        std::string Content_Type_cgi;
+        std::string statuscode_cgi;
+        std::string Location_cgi;
+        std::string Cookie_cgi;
+        std::string body_cgi;
+     char buffer[BUFF_SIZE];
+      std::ifstream file;
+      std::string _buffer;
+      std::string _body;
+      std::string _autoindex;
+     bool _isOpen;
+    bool            headerSent;
     std::string     _headers;
     std::string     _Content_Lenght;
     std::string     _Content_Type;
     std::string             _statuscode;
      int            file_size;
-     bool           isDone;
+     bool           _isDone;
     // std::ifstream _file;
     
 
     public:
-    response()
-    {
-        headers = 0;       
-    };
+    response():_isOpen(false),headerSent(false),_isDone(false){};
     ~response(){};
     void    SetStatusCode(std::string _status)
     {
@@ -39,18 +51,19 @@ class response
     std::string getExtensionFromURI(std::string uri);
     std::string FinalString(request &req);
     std::string get_Body();
-    int get_file_size();
+    int get_file_size(); 
     void Send(int sck,request &req);
+    void    set_body(std::string body);
+    std::string get_body();
+    void    autoindex(request &req);
+    std::string get_autoindex();
     void setContentType(request &req)
     {
         std::map<std::string, std::string> con_type = req.getHeaders();
         std::string Content_type =  con_type["content-type"];
         _Content_Type += "Content-type: " + Content_type + "\r\n";
     };
-    int get_fd()
-    {
-        return this->fd;
-    };
+
     std::string getContentLenght()
     {
         return _Content_Lenght;
@@ -63,20 +76,53 @@ class response
     {
         return this->_statuscode;
     };
-
-    bool getIsDone()
+    
+    // bool getIsDone()
+    // {
+    //     return this->_isDone;
+    // };
+    void isfileopen(bool isopen)
     {
-        return this->isDone;
-    };
+        this->_isOpen = isopen;
+    }
+     void isheadersdone(bool isopen)
+    {
+        this->_isOpen = isopen;
+    }
+     void bodyisDone(bool isDone)
+    {
+        this->_isDone = isDone;
+    }
 
-
-void    setGet_Body(request &req);
-// std::string ChunkBody(std::string body)
+// void    setGet_Body(std::string &body)
 // {
-//     int fd = 
+//     this->_buffer += body;
 // }
-
-void    GetMethod(location_obj &location,request &req);
+void    GetMethod(request &req);
  void    SendResponse(int sck);
+
+        void setContentLenghtCgi(std::string &body);
+        void setcontentTypeCgi(std::string &body); 
+        void    setStatusCodeCgi(std::string &body);
+        void    setLocationCgi(std::string &body);
+        void    setCookieCgi(std::string &body);
+        void    setBodyCgi(std::string &body);
+        std::string getStatusCodeCgi();
+        std::string getLocationCgi();
+        std::string getCookieCgi();
+        std::string getContentTypeCgi();
+        std::string getContentLenghtCgi();
+        std::string getBodyCgi();
+
+        void    setBodyCgi(std::string &body);
+        std::string getBodyCgi();
+        void    setEnv(request & req);
+        void get_cgi_body(std::string &res,request &req);
+        std::string serveCgi(request &req);
+        char** env_to_char();
+        void    cgi_exec(request & req);
+        std::string set_cgi_executable(request &req);
+
+
 };
 #endif

@@ -122,8 +122,18 @@ bool compare(std::string s1, std::string s2){
     return s1.size() < s2.size();
 }
 
+int find(std::vector<std::string> list, std::string url){
+    int i = 0;
+    for (std::vector<std::string>::iterator it = list.begin(); it != list.end(); it++, i++){
+        // std::cout << "list[i] : " << list[i] << std::endl;
+        if (list[i].find(url) != std::string::npos)
+            return i;
+    }
+    return -1;
+}
+
 typedef std::vector<location_obj> location;
-void request::matchLocation(std::string url, client clt, int sck){
+void request::matchLocation(std::string url, client_config clt, int sck){
     // match request url with location
     // setLocPath(std:npos);
     std::map<int, Server_obj>::iterator myserver = clt.find(sck);
@@ -137,35 +147,72 @@ void request::matchLocation(std::string url, client clt, int sck){
     int loc_size = cpy_location.size();
 
     std::vector<std::string> loc_list;
+    std::vector<std::string> unsorted_list;
     for (int it = 0; it < loc_size; it++){
         loc_list.push_back(cpy_location[it].get_location());
-        std::cout << cpy_location[it].get_location() << std::endl;
+        unsorted_list.push_back(cpy_location[it].get_location());
     }
     // sort all location by lenght in loc_list in descending order
     sort(loc_list.begin(), loc_list.end(), compare);
-    for(int it2 = 0; it2 < (int)loc_list.size(); it2++)
-        std::cout << "location " << it2 << ">> " << loc_list[it2] << std::endl;
     // then match the uri starting from the top of list
     std::string root;
-    // std::cout << "initial_root  >> "  << root << std::endl;
-    if (std::find(loc_list.begin(), loc_list.end(), url) != loc_list.end()){
-        std::cout << "match" << std::endl;
-        // get the location object from cpy_location vector
-        std::vector<std::string>::iterator it = std::find(loc_list.begin(), loc_list.end(), url);
-        int index = std::distance(loc_list.begin(), it);
-        // std::cout << "index >> " << index << std::endl;
-        setLoc(cpy_location[index]);
-        root = cpy_location[index].get_root();
-        if (!root.empty()){
-            std::string locPath = root + url;
-            setLocPath(locPath);
-            
-        }else{
-            std::string locPath = url;
-            setLocPath(locPath);
+    std::string tmp_url = url;
+    std::string locPath = "";
+    while(1){
+
+        // for(int it2 = 0; it2 < (int)loc_list.size(); it2++){
+
+        //     std::cout << "location " << it2 << ">> " << loc_list[it2] << std::endl;
+        //     std::cout << "sorted location " << it2 << ">> " << unsorted_list[it2] << std::endl;
+        // }
+        // std::cout << "initial_url  >> "  << url << std::endl;
+        // std::cout << "url >>" << url << std::endl;
+        int index = find(loc_list, url);
+        // std::cout << "index  bbbbbbbef***** " << index <<std::endl;
+
+        // std::cout << "index  ***** " << index <<std::endl;
+        if (index >= 0){
+            index = find(unsorted_list, loc_list[index]);
+            std::cout << "matched  *****" <<std::endl;
+            setLoc(cpy_location[index]);
+
+            // std::cout << "iteeer" << cpy_location[index + 1].get_root() << std::endl;
+            // std::cout << "url :  "  << url << std::endl;
+            root = cpy_location[index].get_root();
+
+
+
+            if (!root.empty()){
+                std::cout << "root :  "  << root << std::endl;
+                locPath = root + tmp_url;
+                setLocPath(locPath);
+                // std::cout << "UUUURLLLLL >>>>> " << getLocPath() << std::endl;
+                break;
+                
+            }else{
+                locPath = tmp_url;
+                // std::cout << "root :  "  << root << std::endl;
+                setLocPath(locPath);
+                break;
+            }
         }
-    }else
-       std::cout << "404 not found" << std::endl;
+        if (locPath == ""){
+            url = url.substr(0, url.find_last_of("/"));
+            // std::cout << "url >> " << url << std::endl;
+            // std::cout << "size url >>" << url.size() << std::endl;
+
+        }
+        else if (url.empty() || url == "/")
+            break;
+
+    }
+    // if (url.empty() || url == "/"){
+    //     root = "/";
+    //     // std::cout << "root :  "  << root << std::endl;
+    //     locPath = root;
+    //     setLocPath(locPath);
+    // }
+       
 }
 
 

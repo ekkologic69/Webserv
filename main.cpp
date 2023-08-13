@@ -6,7 +6,7 @@
 #include <set>
 #include "request/prequest.hpp"
 #include "response.hpp"
-
+#include <signal.h>
 // void sendResponse(int clientSocket, const std::string& content, const std::string& contentType) {
 // 	// std::cout << "\n\n" << content << "\n\n" << std::endl;
 //     std::string response =
@@ -33,7 +33,7 @@
 //         }
 //     }
 // }
-void	add_to_map(int sck, Server_obj server, client &clt)
+void	add_to_map(int sck, Server_obj server, client_config &clt)
 {
 	std::pair<int, Server_obj>	pr;
 
@@ -42,38 +42,41 @@ void	add_to_map(int sck, Server_obj server, client &clt)
 	clt.insert(pr);
 }
 
-int	ft_new_connex(int sck, std::set<int> &acceptedSockets, int &MAX_FD, fd_set &read_fds, client &clt)
+int	ft_new_connex(int sck, std::set<int> &acceptedSockets, int &MAX_FD, fd_set &read_fds, client_config &clt)
 {
 	int					acc_socket = 0;
-	client::iterator	iter;
+	client_config::iterator	iter;
 	Server_obj			tmp_serv;
+	// new_client			client;
 
 	if ((acc_socket = accept(sck, NULL, NULL)) > 0)
 	{
-		std::cout << "\nold_sock <<<<<< " << sck << std::endl;
-		std::cout << "\nnew_sock <<<<<< " << acc_socket << std::endl;
 		acceptedSockets.insert(acc_socket);
 		if(MAX_FD <= acc_socket)
 			MAX_FD = acc_socket;
 		FD_SET(acc_socket, &read_fds);
-
 		iter = clt.find(sck);
-		std::cout << "\n\nclient num ===== " << sck << std::endl;
-		std::cout << "Host of the current client ==== " << iter->second.get_host() << "\n\n" << std::endl;
-
 		tmp_serv = iter->second;
-
-		// clt.erase(iter);
 		add_to_map(acc_socket, tmp_serv, clt);
-		//To DO eares the old socket from the map
 	}
 	else
 	{
 		perror("accept failed");
 		exit(0);
 	}
-	// (void)acceptedSockets;
 	return(acc_socket);
+
+}
+
+void	ft_add_client(int sck, new_client &new_clt, request &rq, client &clt)
+{
+	clt.sett_rq_object(rq);
+	// clt.sett_res_obj(res);
+	std::pair<int, client>	pr;
+
+	pr.first = sck;
+	pr.second = clt;
+	new_clt.insert(pr);
 
 }
 
@@ -85,7 +88,7 @@ int main(int ac, char **av)
 	FD_ZERO(&accpted_fd);
 
 	Server	server;
-	client	clt;
+	client_config	clt_config;
 	if(ac != 2)
 	{
 		std::cout << "ERROR: More or less then the argument requierd !" << std::endl;
@@ -99,14 +102,20 @@ int main(int ac, char **av)
 		int		sck;
 		int		MAX_FD;
 		int		sck_fd;
+		int it_sck;
 		request req;
+		request rq;
 		sockaddr_in	address;
+		new_client	new_clt;
+		client		clt;
+
 		while (i < server.size())
 		{
-			std::cout << "\n\nserver num :: " << i << "\n" << std::endl;
+			// std::cout << "\n\nserver num :: " << i << "\n" << std::endl;
 			sck_fd = ft_creat_sock(server[i], &address);
+			std::cout << "setting sock " << sck_fd <<std::endl;
 			FD_SET(sck_fd, &read_master_fds);
-			add_to_map(sck_fd, server[i], clt);
+			add_to_map(sck_fd, server[i], clt_config);
 			i++;
 		}
 		long	ret_read;
@@ -116,88 +125,82 @@ int main(int ac, char **av)
 		// char buffer[1025] = {0};
 		std::string buffer;
 		buffer.resize(1024);
+		signal(SIGPIPE, SIG_IGN);
 
 		while(1)
 		{
 			read_fds = read_master_fds;
 			write_fds = write_master_fds;
 			sck = 0;
-			printf("\n+++++++ Waiting for new connection ++++++++\n\n");
+			//printf("\n+++++++ Waiting for new connection ++++++++\n\n");
 			if(select(MAX_FD + 1, &read_fds, &write_fds, NULL, NULL) < 0)
 			{
+				std::cout << "reading from " << sck << std::endl;
 				perror("select failed");
 				exit(0);
 			}
+
 			while(sck <= MAX_FD)
 			{
+
 				if(FD_ISSET(sck, &read_fds))
 				{
+
 					if(acceptedSockets.find(sck) == acceptedSockets.end())
-						sck = ft_new_connex(sck, acceptedSockets, MAX_FD, read_master_fds, clt);
+						sck = ft_new_connex(sck, acceptedSockets, MAX_FD, read_master_fds, clt_config);
 					ret_read = read(sck , (void *)buffer.c_str(), 1024);
-					std::cout << " request sie >>>>> " << ret_read << std::endl;
-					//std::cout << buffer << std::endl;
-					std::cout << "to parsing >>>>>>>>>>>" <<  std::endl;
-					 req = pRequest(buffer, clt, sck);
-					std::cout << "Name: " << req.getServerName() << std::endl;
-					std::cout << "FD: " << req.getFd() << std::endl;
-					std::cout << "Method: " << req.getMethod() << std::endl;
-					std::cout << "URI: " << req.getUri() << std::endl;
-					std::cout << "HTTP Version: " << req.getHttpV() << std::endl;
-					std::cout << "Headers: " << std::endl;
+
+					std::cout << buffer << std::endl;
+					 rq = pRequest(buffer, clt_config, sck);
+					 ft_add_client(sck, new_clt, rq, clt);
+					new_client::iterator it;
+					it = new_clt.find(sck);
+					it->second.sett_rq_object(rq);
+					std::cout << "it->forst >>>>>>>"<< it->first << std::endl;
+					it_sck = it->first;
+					// std::cout << "client sck >>>>>>>>>>> " << it->first << std::endl;
+					req = it->second.get_rq_object();
 					std::map<std::string, std::string> headers = req.getHeaders();
-					for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it) {
-						std::cout << it->first << ": " << it->second << std::endl;
-					}
-				 std::cout << "BODY=====>: " << req.getBody()<< std::endl;
-					//allocate req._res
+					// for(std::map<std::string, std::string>::iterator ita = headers.begin(); ita != headers.end(); ita++)
+					// {
+					// 	std::cout << ita->first << " : " << ita->second << std::endl;
+					// }
 					req._res = new response();
-					req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
-					req._res->set_get_con_type(req);
-					req._res->setContentLenght(req);
-					std::cout << "locPath : " << req.getLocPath() << std::endl;
-					std::cout << "location object : " << req._loc.get_location() << std::endl;
+
+					// req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
+					// req._res->set_get_con_type(req);
+					// req._res->setContentLenght(req);
+					if(req.getMethod() == "GET")
+						req._res->GetMethod(req);
 					buffer.clear();
 					buffer.resize(1024);
 					if(ret_read < 1024)
 					{
-						std::cout << "send" << std::endl;
-						FD_SET(sck, &write_master_fds);
-						FD_CLR(sck, &read_master_fds);
+						std::cout << "ret read >>> " << ret_read << std::endl;
+						FD_SET(it_sck, &write_master_fds);
+						FD_CLR(it_sck, &read_master_fds);
 					}
 					break;
 				}
-				else if(FD_ISSET(sck, &write_fds))
+				else if(FD_ISSET(it_sck, &write_fds))
 				{
-					//SendResponse(sck);  
-					// std::cout << "STATUS CODE ================>"<<req._res->getStatusCode()<< std::endl;
-					// std::cout <<"CONTENT-LENGHT==========>" <<req._res->getContentLenght()<< std::endl;;
-					// std::cout << "CONTENT-TYPE==========>" <<req._res->getContentType()<< std::endl;
-					req._res->Send(sck, req);
-					//write(sck , "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!" , 74);
-					printf("\n------------------Hello message sent-------------------\n");
-					std::cout << "sck eares >>>> " << sck << std::endl;
-					// if(req._res->getIsDone() == true)
-					// {
-						close(sck);
-						// close(req._res->get_fd());
-					// }
-					acceptedSockets.erase(sck);
-					clt.erase(sck);
-					FD_CLR(sck, &write_master_fds);
+					req._res->Send(it_sck, req);
+
+					// printf("\n------------------Hello message sent-------------------\n");
+					 if(req._res->_isDone == true || req._loc.get_auto_index())
+					 {
+						std::cout << "sck erase >>>> " << it_sck << std::endl;
+						// std::cout << " . aaaaaaaaa" << std::endl;
+						FD_CLR(it_sck, &write_master_fds);
+						close(it_sck);
+						new_clt.erase(it_sck);
+						acceptedSockets.erase(it_sck);
+						clt_config.erase(it_sck);
+					 }
 					break;
 				}
 				sck++;
 			}
-
-		// write(sck , "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!" , 74);
-		// printf("\n------------------Hello message sent-------------------\n");
-		// std::cout << "sck eares >>>> " << sck << std::endl;
-		// close(sck);
-		// FD_CLR(sck, &read_master_fds);
-		// acceptedSockets.erase(sck);
-		// clt.erase(sck);
-		// clear it from write_fds set
     }
 }
 	catch(std::exception &e)
