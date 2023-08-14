@@ -61,6 +61,7 @@ int	ft_new_connex(int sck, std::set<int> &acceptedSockets, int &MAX_FD, fd_set &
 	}
 	else
 	{
+		std::cout << sck << std::endl;
 		perror("accept failed");
 		exit(0);
 	}
@@ -187,7 +188,7 @@ int main(int ac, char **av)
 					req._res->Send(it_sck, req);
 
 					// printf("\n------------------Hello message sent-------------------\n");
-					 if(req._res->_isDone == true || req._loc.get_auto_index())
+					 if(req._res->_isDone == true)
 					 {
 						std::cout << "sck erase >>>> " << it_sck << std::endl;
 						// std::cout << " . aaaaaaaaa" << std::endl;

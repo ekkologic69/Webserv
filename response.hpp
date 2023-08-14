@@ -17,6 +17,7 @@ class response
         std::vector<std::string>    _env;
         pid_t pid;
         int status;
+        int op;
         std::string Content_Lenght_cgi;
         std::string Content_Type_cgi;
         std::string statuscode_cgi;
@@ -47,6 +48,7 @@ class response
         _statuscode = _status;
     };
     void setContentLenght(request &req);
+    std::string  send_response_body(request &req);
     void    set_get_con_type(request &req);
     std::string getExtensionFromURI(std::string uri);
     std::string FinalString(request &req);
@@ -101,12 +103,12 @@ class response
 void    GetMethod(request &req);
  void    SendResponse(int sck);
 
-        void setContentLenghtCgi(std::string &body);
-        void setcontentTypeCgi(std::string &body); 
-        void    setStatusCodeCgi(std::string &body);
-        void    setLocationCgi(std::string &body);
-        void    setCookieCgi(std::string &body);
-        void    setBodyCgi(std::string &body);
+        void setContentLenghtCgi(std::string body);
+        void setContentTypeCgi(std::string body); 
+        void    setStatusCodeCgi(std::string body);
+        void    setLocationCgi(std::string body);
+        void    setCookieCgi(std::string body);
+        void    setBodyCgi(std::string body);
         std::string getStatusCodeCgi();
         std::string getLocationCgi();
         std::string getCookieCgi();
@@ -114,13 +116,13 @@ void    GetMethod(request &req);
         std::string getContentLenghtCgi();
         std::string getBodyCgi();
 
-        void    setBodyCgi(std::string &body);
-        std::string getBodyCgi();
+       // void    setBodyCgi(std::string &body);
+        std::string getBody();
         void    setEnv(request & req);
         void get_cgi_body(std::string &res,request &req);
         std::string serveCgi(request &req);
         char** env_to_char();
-        void    cgi_exec(request & req);
+        std::string    cgi_exec(request & req);
         std::string set_cgi_executable(request &req);
 
 
