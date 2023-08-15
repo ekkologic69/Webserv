@@ -1,5 +1,13 @@
 #include "response.hpp"
+#include <sys/types.h>
+#include <sys/wait.h>
 
+std::string to_str(int  num)
+{
+    std::ostringstream conv;
+    conv << num;
+    return(conv.str());
+}
 std::string get_query_string(std::string uri) {
     size_t questionMarkPos = uri.find('?');
     if (questionMarkPos != std::string::npos && questionMarkPos + 1 < uri.length()) {
@@ -13,8 +21,8 @@ void    response::setEnv(request &req)
     std::map<std::string, std::string>    headers = req.getHeaders();
 
     this->_env.push_back(std::string("REQUEST_METHOD=") + req.getMethod());
-    this->_env.push_back("SERVER_PORT=" + std::to_string(1050));
-    this->_env.push_back(std::string("HTTP_PORT=") + std::to_string(1050));
+    this->_env.push_back("SERVER_PORT=" + req.to_str(1050));
+    this->_env.push_back(std::string("HTTP_PORT=") + req.to_str(1050));
     this->_env.push_back(std::string("SCRIPT_NAME=") + req.getLocPath());
     this->_env.push_back(std::string("SCRIPT_FILENAME=") + req.getLocPath());
     this->_env.push_back(std::string("PATH_INFO=") + req.getLocPath());
@@ -23,13 +31,13 @@ void    response::setEnv(request &req)
     this->_env.push_back(std::string("SERVER_HOST=") + "127.0.0.1");
     this->_env.push_back(std::string("HTTP_HOST=") + "127.0.0.1");
     this->_env.push_back(std::string("SERVER_PROTOCOL=HTTP/1.1"));
-    this->_env.push_back(std::string("USER_AGENT=") + headers["user-agent"]);
+    this->_env.push_back(std::string("USER_AGENT=") + headers["User-Agent"]);
     this->_env.push_back(std::string("GATEWAY_INTERFACE=CGI/1.1"));
 
     if(req.getMethod() == "POST")
     {
         this->_env.push_back(std::string("CONTENT_TYPE=") + headers["content-type"]);
-        this->_env.push_back(std::string("CONTENT_LENGTH=") + std::to_string(req.getContentLenght()));
+        this->_env.push_back(std::string("CONTENT_LENGTH=") + req.to_str(req.getContentLenght()));
     }
     
 }
@@ -63,11 +71,11 @@ std::string response::set_cgi_executable(request &req)
     std::string ext = getExtension(path);
     std::cout << "ext :: " << ext << std::endl;
     if(ext == "php"){
-        res = "./php-cgi";
+        res = "/usr/bin/php-cgi";
         return res;
     }
     else if(ext == "py"){
-        res = "./python-cgi";
+        res = "/usr/bin/python3";
         return res;
     }
     else
@@ -80,7 +88,7 @@ std::string response::set_cgi_executable(request &req)
     const int length = 10; // Change the length as needed
     std::string randomName;
 
-    srand(static_cast<unsigned int>(time(nullptr)));
+    srand(static_cast<unsigned int>(time(NULL)));
 
     for (int i = 0; i < length; ++i) {
         randomName += characters[rand() % (sizeof(characters) - 1)];
@@ -95,7 +103,7 @@ std::string  response::cgi_exec(request &req)
     int fd_in = 0;
     int fd_out;
     std::string res;
-    std::string cgi =  generateRandomFileName(".txt");
+    std::string cgi =  "/tmp/"+generateRandomFileName(".txt");
     std::cout << "cgi :: " << cgi << std::endl;
     // if (req.getMethod() == "POST")
     //     fd_in = open("/tmp/post.txt", O_RDWR | O_CREAT | O_TRUNC, 0666);
@@ -117,8 +125,8 @@ std::string  response::cgi_exec(request &req)
     }    
      else if(this->pid == 0)
     {
-        
-        char *arg[3]= {(char *)path.c_str(),(char *)req.getLocPath().c_str(), NULL};
+        std::string pathloc = req.getLocPath();
+        char *arg[3]= {(char *)path.c_str(),(char *)pathloc.c_str(), NULL};
         if(!arg[0] || !arg[1])
         {
               // send505;
@@ -231,7 +239,7 @@ void response::get_cgi_body(std::string &res,request &req)
     ss >> content_length;
 
     if (content_length == 0 && !req._res->getBody().empty())
-        req._res->setContentLenghtCgi(std::to_string(req._res->getBody().size()));
+        req._res->setContentLenghtCgi(to_str(req._res->getBody().size()));
 }
 
 void response::setContentLenghtCgi(std::string body)

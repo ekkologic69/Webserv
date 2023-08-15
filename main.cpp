@@ -61,8 +61,7 @@ int	ft_new_connex(int sck, std::set<int> &acceptedSockets, int &MAX_FD, fd_set &
 	}
 	else
 	{
-		std::cout << sck << std::endl;
-		perror("accept failed");
+		perror("accept failed"); 
 		exit(0);
 	}
 	return(acc_socket);
@@ -83,13 +82,14 @@ void	ft_add_client(int sck, new_client &new_clt, request &rq, client &clt)
 
 int main(int ac, char **av)
 {
-	fd_set read_fds, read_master_fds, write_fds, write_master_fds, accpted_fd;
+	fd_set read_fds, read_master_fds, *write_fds, write_master_fds, accpted_fd;
+	Server	server;
+	client_config	clt_config;
+	write_fds = new fd_set;
 	FD_ZERO(&read_master_fds);
 	FD_ZERO(&write_master_fds);
 	FD_ZERO(&accpted_fd);
 
-	Server	server;
-	client_config	clt_config;
 	if(ac != 2)
 	{
 		std::cout << "ERROR: More or less then the argument requierd !" << std::endl;
@@ -103,7 +103,7 @@ int main(int ac, char **av)
 		int		sck;
 		int		MAX_FD;
 		int		sck_fd;
-		int it_sck;
+		int it_sck=0;
 		request req;
 		request rq;
 		sockaddr_in	address;
@@ -126,15 +126,15 @@ int main(int ac, char **av)
 		// char buffer[1025] = {0};
 		std::string buffer;
 		buffer.resize(1024);
-		signal(SIGPIPE, SIG_IGN);
+		// signal(SIGPIPE, SIG_IGN);
 
 		while(1)
 		{
 			read_fds = read_master_fds;
-			write_fds = write_master_fds;
+			write_fds = &write_master_fds;
 			sck = 0;
-			//printf("\n+++++++ Waiting for new connection ++++++++\n\n");
-			if(select(MAX_FD + 1, &read_fds, &write_fds, NULL, NULL) < 0)
+			printf("\n+++++++ Waiting for new connection ++++++++\n\n");
+			if(select(MAX_FD + 1, &read_fds, write_fds, NULL, NULL) < 0)
 			{
 				std::cout << "reading from " << sck << std::endl;
 				perror("select failed");
@@ -151,7 +151,7 @@ int main(int ac, char **av)
 						sck = ft_new_connex(sck, acceptedSockets, MAX_FD, read_master_fds, clt_config);
 					ret_read = read(sck , (void *)buffer.c_str(), 1024);
 
-					std::cout << buffer << std::endl;
+					//std::cout << buffer << std::endl;
 					 rq = pRequest(buffer, clt_config, sck);
 					 ft_add_client(sck, new_clt, rq, clt);
 					new_client::iterator it;
@@ -162,10 +162,10 @@ int main(int ac, char **av)
 					// std::cout << "client sck >>>>>>>>>>> " << it->first << std::endl;
 					req = it->second.get_rq_object();
 					std::map<std::string, std::string> headers = req.getHeaders();
-					// for(std::map<std::string, std::string>::iterator ita = headers.begin(); ita != headers.end(); ita++)
-					// {
-					// 	std::cout << ita->first << " : " << ita->second << std::endl;
-					// }
+					for(std::map<std::string, std::string>::iterator ita = headers.begin(); ita != headers.end(); ita++)
+					{
+						std::cout << ita->first << " : " << ita->second << std::endl;
+					}
 					req._res = new response();
 
 					// req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
@@ -183,12 +183,12 @@ int main(int ac, char **av)
 					}
 					break;
 				}
-				else if(FD_ISSET(it_sck, &write_fds))
+				else if(FD_ISSET(it_sck, write_fds))
 				{
 					req._res->Send(it_sck, req);
 
-					// printf("\n------------------Hello message sent-------------------\n");
-					 if(req._res->_isDone == true)
+					printf("\n------------------Hello message sent-------------------\n");
+					if(req._res->_isDone == true)
 					 {
 						std::cout << "sck erase >>>> " << it_sck << std::endl;
 						// std::cout << " . aaaaaaaaa" << std::endl;
@@ -208,7 +208,7 @@ int main(int ac, char **av)
 	{
 		std::cout << e.what() << std::endl;
 	}
-
+delete write_fds;
 }
 
 // To DO:

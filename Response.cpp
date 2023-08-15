@@ -1,62 +1,121 @@
 #include "response.hpp"
+#include <sys/stat.h>
 
+
+// bool fileExists(const char* path) {
+//     struct stat fileInfo;
+//     return (stat(path, &fileInfo) == 0);
+// }
+
+// bool writePerm(const char* filename)
+// {
+//     struct stat fileStat;
+//     if (stat(filename, &fileStat) != 0)
+//         return false;
+//     return (fileStat.st_mode & S_IWUSR) != 0;
+// }
+
+// void    response::deleteMethod(request &req)
+// {
+//     std::string myLocation = req.getLocPath();
+//     std::cout << "=====>" << myLocation << std::endl;
+//     struct stat fileInfo;
+//     // Check if it's a directory
+//     if (stat(myLocation.c_str(), &fileInfo) == 0)
+//     {
+//         // if yes
+//         if (S_ISDIR(fileInfo.st_mode))
+//         {
+//             if (myLocation[myLocation.size() - 1] != '/')
+//                 std::cout << "409 Conflict" << std::endl;
+//             else
+//                 std::cout << "403 Permission denied" << std::endl;
+//         }
+//         // if it's a file
+//         else
+//         {
+//             // Check if the file you want to delete exists be3da
+//             if (fileExists(myLocation.c_str()))
+//             {
+//                 // Check if it has write permission
+//                 if (writePerm(myLocation.c_str()))
+//                 {
+//                     // Delete the file
+//                     int deleteResult = std::remove(myLocation.c_str());
+//                     if (deleteResult == 0)
+//                         // Successfully deleted
+//                         std::cout << "204 No content" << std::endl;
+//                     else
+//                         // Error occured during the operation of deleting
+//                         std::cout << "500 Internal Server Error" << std::endl;
+//                 }
+//                 else
+//                     std::cout << "403 Permission denied" << std::endl;
+//             }
+//             else
+//             {
+//                 std::cout << "404 Not Found" << std::endl;
+//             }
+//         }
+//     }
+// }
 void   response::GetMethod(request &req)
 {
-    DIR *dir = opendir(req.getLocPath().c_str());
-     if(dir)
-     {    std::cout << "req._loc.get_cgi() >>>>>>>>> " << req._loc.get_cgi() << std::endl;
+    // DIR *dir = opendir(req.getLocPath().c_str());
+    //  if(dir)
+    //  {    std::cout << "req._loc.get_cgi() >>>>>>>>> " << req._loc.get_cgi() << std::endl;
 
-        if(req._loc.get_index().empty()) 
-          { 
+    //     if(req._loc.get_index().empty()) 
+    //       { 
 
-            if(req._loc.get_cgi() && !access(req.getLocPath().c_str(),X_OK))
-            {
-                std::string i = req._res->cgi_exec(req);
-                req._res->op = 1;
-            }
-             else if(!access(req.getLocPath().c_str(),R_OK))
-             {
-                req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
-                req._res->set_get_con_type(req);
-                req._res->setContentLenght(req);
-                req._res->op = 3;
-             } 
-          }
-         else if(req._loc.get_auto_index())
-         {
-            req._res->autoindex(req);
-            req._res->bodyisDone(true);
-            req._res->op = 2;
-         }
-        else
-        {
-            closedir(dir);
-            //send 403;
-            //req._res->SetStatusCode("HTTP/1.1 403 Forbidden\r\n");
-            req._res->op = 4;
-            //set_body("403 Forbidden");
-        }
-     }
+    //         if(req._loc.get_cgi() && !access(req.getLocPath().c_str(),X_OK))
+    //         {
+    //             std::string i = req._res->cgi_exec(req);
+    //             req._res->op = 1;
+    //         }
+    //          else if(!access(req.getLocPath().c_str(),R_OK))
+    //          {
+    //             req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
+    //             req._res->set_get_con_type(req);
+    //             req._res->setContentLenght(req);
+    //             req._res->op = 3;
+    //          } 
+    //       }
+    //      else if(req._loc.get_auto_index())
+    //      {
+    //         req._res->autoindex(req);
+    //         req._res->bodyisDone(true);
+    //         req._res->op = 2;
+    //      }
+    //     else
+    //     {
+    //         closedir(dir);
+    //         //send 403;
+    //         //req._res->SetStatusCode("HTTP/1.1 403 Forbidden\r\n");
+    //         req._res->op = 4;
+    //         //set_body("403 Forbidden");
+    //     }
+    //  }
     if(req._loc.get_cgi() && !access(req.getLocPath().c_str(),X_OK))
      {
           std::string i = req._res->cgi_exec(req);
         req._res->op = 1;
      }
-    if(access(req.getLocPath().c_str(),F_OK) == 0)
-    {
-        if(access(req.getLocPath().c_str(),R_OK) == 0)
-        {
-            req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
-            req._res->set_get_con_type(req);
-            req._res->setContentLenght(req);
-            req._res->op = 3;
-        }
-        else
-        {
-            req._res->op = 4;
+    // if(access(req.getLocPath().c_str(),F_OK) == 0)
+    // {
+    //     if(access(req.getLocPath().c_str(),R_OK) == 0)
+    //     {
+    //         req._res->SetStatusCode("HTTP/1.1 200 OK\r\n");
+    //         req._res->set_get_con_type(req);
+    //         req._res->setContentLenght(req);
+    //         req._res->op = 3;
+    //     }
+    //     else
+    //     {
+    //         req._res->op = 4;
 
-        }
-    }
+    //     }
+    // }
         
 }
 std::string  response::send_response_body(request &req)
@@ -126,12 +185,13 @@ void    response::set_get_con_type(request &req)
 
     void response::setContentLenght(request &req)
     {
-        std::ifstream file(req.getLocPath(), std::ios::binary);
+        std::string path = req.getLocPath();
+        std::ifstream file(path.c_str(), std::ios::binary);
         file.seekg(0, std::ios::end);
         this->file_size = file.tellg();
         std::cout << "file size is : " << file_size << std::endl;
         file.close();
-        this->_Content_Lenght += "Content-Length: " + std::to_string(file_size) + "\r\n";
+        this->_Content_Lenght += "Content-Length: " + req.to_str(file_size) + "\r\n";
     };
 int response::get_file_size()
 {
@@ -218,7 +278,7 @@ void response::Send(int sck,request &req)
     //     }
     // else
     if( req._res->_isDone == false){
-        res = req._res->send_response_body(req);
+        res = req._res->serveCgi(req);
         std::cout << req._res->op<< std::endl;
         // std::cout << "res >>>>>>>>> " << res << std::endl;
          int count = send(sck,res.c_str(), res.size(), 0);
@@ -268,7 +328,7 @@ void    response::autoindex(request &req)
     }
     this->_autoindex = "HTTP/1.1 200 OK\r\n";
     this->_autoindex += "Content-Type: text/html\r\n";
-    this->_autoindex += "Content-Length: " + std::to_string(index.size() + strlen("<html><body><h1>Directory Listing</h1><ul>") + strlen("</ul></body></html>")) + "\r\n\r\n";
+    this->_autoindex += "Content-Length: " + req.to_str(index.size() + strlen("<html><body><h1>Directory Listing</h1><ul>") + strlen("</ul></body></html>")) + "\r\n\r\n";
     this->_autoindex += "<html><body><h1>Directory Listing</h1><ul>" + index + "</ul></body></html>";
     this->bodyisDone(true);
 }
