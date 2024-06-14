@@ -1,13 +1,14 @@
 NAME = webserv
-CFLAGS = -Wall -Wextra -Werror -std=c++98 -fsanitize=address -g
+CFLAGS = -Wall -Wextra -Werror -std=c++98 
 SRCS = config_file/*.cpp *.cpp socket/socket.cpp request/*.cpp
 
 all : $(NAME)
 $(NAME): $(SRCS)
-	@clang++ $(SRCS) $(CFLAGS) -o $(NAME)
+	@c++ $(SRCS) $(CFLAGS) -o $(NAME)
 	@echo 	YOU ARE READY TO GO ...!
 clean :
-	@rm -rf request_body_*.*
+	@rm -rf upload/*
+	@rm -rf request_body*.*
 	@rm -rf $(NAME)
 	@echo CLEAN ...!
 fclean : clean

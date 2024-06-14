@@ -36,7 +36,18 @@ std::vector<location_obj>	Server_obj::get_location()
 // {
 // 	this->address = address;
 // }
+unsigned long	Server_obj::getBodySize(){
+	unsigned long ret = atoi(body_size.c_str());
+	return(ret); 
+}
 
+std::string Server_obj::getBodySize_string(){
+	return(body_size);
+}
+
+void	Server_obj::set_bodysize(){
+	body_size = "-1";
+}
 
 void	Server_obj::setter(std::string &str, std::string &attr)
 {
@@ -48,6 +59,13 @@ void	Server_obj::setter(std::string &str, std::string &attr)
 			host = "127.0.0.1";
 		else
 			host = attr;
+	}
+	else if(str == "body_size")
+	{
+		if(attr.size() == 0)
+			body_size = "-1";
+		else
+			body_size = attr;
 	}
 	else if(str == "error_page")
 		ft_add_error_page(attr);

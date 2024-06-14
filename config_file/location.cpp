@@ -84,10 +84,22 @@ std::string	location_obj::get_location() const
 	return (this->location);
 }
 
+methods location_obj::get_method_list()
+{
+	return(methods_list);
+}
+
 std::string	location_obj::get_root() const
 {
 	return (this->root);
 }
+
+std::string	location_obj::get_upload() const
+{
+	return (this->upload);
+}
+
+
 
 ///////////////////////////////////////////////////////
 

@@ -19,24 +19,25 @@ std::string get_query_string(std::string uri) {
 void    response::setEnv(request &req)
 {
     std::map<std::string, std::string>    headers = req.getHeaders();
-
+    std::string path = req.getLocPath();
+    std::string server_name = req.getServerName();
     this->_env.push_back(std::string("REQUEST_METHOD=") + req.getMethod());
-    this->_env.push_back("SERVER_PORT=" + req.to_str(1050));
-    this->_env.push_back(std::string("HTTP_PORT=") + req.to_str(1050));
-    this->_env.push_back(std::string("SCRIPT_NAME=") + req.getLocPath());
-    this->_env.push_back(std::string("SCRIPT_FILENAME=") + req.getLocPath());
-    this->_env.push_back(std::string("PATH_INFO=") + req.getLocPath());
+    this->_env.push_back("SERVER_PORT=" + req.port);
+    this->_env.push_back(std::string("HTTP_PORT=") + req.port);
+    this->_env.push_back(std::string("SCRIPT_NAME=") + path);
+    this->_env.push_back(std::string("SCRIPT_FILENAME=") + path);
+    this->_env.push_back(std::string("PATH_INFO=") + path);
     this->_env.push_back(std::string("QUERY_STRING=") + get_query_string(req.getUri()));
     this->_env.push_back(std::string("REDIRECT_STATUS=200"));
-    this->_env.push_back(std::string("SERVER_HOST=") + "127.0.0.1");
-    this->_env.push_back(std::string("HTTP_HOST=") + "127.0.0.1");
+    this->_env.push_back(std::string("SERVER_HOST=") + server_name);
+    this->_env.push_back(std::string("HTTP_HOST=") + server_name);
     this->_env.push_back(std::string("SERVER_PROTOCOL=HTTP/1.1"));
     this->_env.push_back(std::string("USER_AGENT=") + headers["User-Agent"]);
     this->_env.push_back(std::string("GATEWAY_INTERFACE=CGI/1.1"));
 
     if(req.getMethod() == "POST")
     {
-        this->_env.push_back(std::string("CONTENT_TYPE=") + headers["content-type"]);
+        this->_env.push_back(std::string("CONTENT_TYPE=") + headers["Content-Type"]);
         this->_env.push_back(std::string("CONTENT_LENGTH=") + req.to_str(req.getContentLenght()));
     }
     
@@ -69,7 +70,6 @@ std::string response::set_cgi_executable(request &req)
     std::string path = req.getLocPath();
     std::string res;
     std::string ext = getExtension(path);
-    std::cout << "ext :: " << ext << std::endl;
     if(ext == "php"){
         res = "/usr/bin/php-cgi";
         return res;
@@ -103,19 +103,16 @@ std::string  response::cgi_exec(request &req)
     int fd_in = 0;
     int fd_out;
     std::string res;
-    std::string cgi =  "/tmp/"+generateRandomFileName(".txt");
-    std::cout << "cgi :: " << cgi << std::endl;
-    // if (req.getMethod() == "POST")
-    //     fd_in = open("/tmp/post.txt", O_RDWR | O_CREAT | O_TRUNC, 0666);
-    fd_out = open(cgi.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
-    std::cout << "fd_out :: " << fd_out << std::endl;
+    // req.getLoc().get_upload()
+    std::string local = req.getLoc().get_upload() + req.getBody();
+    std::string cgi =  "./upload/"+generateRandomFileName(".txt");
+    if (req.getMethod() == "POST")
+        fd_in = open(local.c_str(), O_RDWR | O_CREAT| O_TRUNC, 0666);
+    else if (req.getMethod() == "GET")
+        fd_out = open(cgi.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
     setEnv(req);
     char **env = env_to_char();
-    // if(req.getMethod() == "POST")
-    // {
-        
-    // }
-    // lseek(fd_in, 0, SEEK_SET);
+    lseek(fd_in, 0, SEEK_SET);
     std::string path = set_cgi_executable(req);
     this->pid = fork();
     if(this->pid == -1)
@@ -129,7 +126,10 @@ std::string  response::cgi_exec(request &req)
         char *arg[3]= {(char *)path.c_str(),(char *)pathloc.c_str(), NULL};
         if(!arg[0] || !arg[1])
         {
-              // send505;
+            req.statuscode = 500;
+            req.SetErrorStatusCode(500);
+            req.setStatusCodePath(req);
+            req.op = 4;
                 exit(1);
         }
 		 if(dup2(fd_in, 0) == -1)
@@ -155,9 +155,8 @@ std::string  response::cgi_exec(request &req)
         std::string line;
         waitpid(this->pid, NULL, 0);
 
-        std::ifstream input_file;
-        std::cout << "cgi :: " << cgi << std::endl;
-        input_file.open(cgi.c_str());
+        std::ifstream inputfile;
+        inputfile.open(cgi.c_str());
         res = "HTTP/1.1 200 OK\r\n";
         std::string ext = getExtension(req.getLocPath());
         if (ext == "py")
@@ -166,14 +165,12 @@ std::string  response::cgi_exec(request &req)
             res += "\r\n";
         }
 
-        while(getline(input_file,line))
+        while(getline(inputfile,line))
         {
-            std::cout << "line :: " << line << std::endl;
             res += line;
             res += "\n";
         }
-        std::cout << "res :: " << res << std::endl;
-        input_file.close();
+        inputfile.close();
         if (fd_in != 0)
             close(fd_in);
         std::ofstream output_file;
@@ -192,134 +189,36 @@ std::string  response::cgi_exec(request &req)
     
 }
 
-void response::get_cgi_body(std::string &res,request &req)
-{
-    std::string key;
-    std::string value;
-    size_t i = 0;
-    size_t j = 0;
-    size_t position = 0;
-    if(res.find("500\r\n") != std::string::npos || res.empty())
-    {
-        std::cout << "500" << std::endl;
-    }
-    while((position = res.find("\r\n",i)) != std::string::npos)
-    {
-        std::cout << "position :: " << position << std::endl;
-        if(position == i)
-            break;
-        key = res.substr(i, position - i);
-        if((j = key.find(":")) != std::string::npos)
-        {
-            value = key.substr(0 + j);
-            if(value == "Content-Type")
-                req._res->setContentTypeCgi(key.substr(j));
-            else if(value == "Content-Length")
-                req._res->setContentLenghtCgi(key.substr(j));
-            else if(value == "Location")
-                req._res->setLocationCgi(key.substr(j));
-            else if(value == "Status")
-                req._res->setStatusCodeCgi(key.substr(j));
-            else if(value == "Set-Cookie")
-                req._res->setCookieCgi(key.substr(j));
-        }
-        i = key.size() + 2;
-        key.clear();
-        value.clear();
-    }
-    if (position == std::string::npos)
-    {
-        req._res->setBodyCgi(res);
-       req._res->setContentTypeCgi("text/html");
-    }
-    else
-        req._res->setBodyCgi(res.substr(position + 2));
-    size_t content_length = 0;
-    std::stringstream ss(req._res->getContentLenghtCgi());
-    ss >> content_length;
-
-    if (content_length == 0 && !req._res->getBody().empty())
-        req._res->setContentLenghtCgi(to_str(req._res->getBody().size()));
-}
-
-void response::setContentLenghtCgi(std::string body)
-{
-    this->Content_Lenght_cgi = body;
-}
-void response::setLocationCgi(std::string body)
-{
-    this->Location_cgi = body;
-}
-void response::setCookieCgi(std::string body)
-{
-    this->Cookie_cgi = body;
-}
-void response::setStatusCodeCgi(std::string body)
-{
-    this->statuscode_cgi = body;
-}
-std::string response::getContentLenghtCgi()
-{
-    return this->Content_Lenght_cgi;
-}
-std::string response::getLocationCgi(){ 
-       return this->Location_cgi;
-}
-std::string response::getCookieCgi()
-{
-    return this->Cookie_cgi;
-}
-std::string response::getStatusCodeCgi()
-{
-    return this->statuscode_cgi;
-}
-void response::setContentTypeCgi(std::string body)
-{
-    this->Content_Type_cgi = body;
-}
-std::string response::getContentTypeCgi()
-{
-    return this->Content_Type_cgi;
-}
-void    response::setBodyCgi(std::string body)
-{
-    this->body_cgi = body;
-}
-std::string response::getBody()
-{
-    return this->body_cgi;
-}
-
 
 std::string response::serveCgi(request &req)
 {
     
    std::string res;
-    if(!this->_isOpen)
+    if(!req._isOpen)
     {
-       std::string path = req._res->cgi_exec(req);
-        std::cout << "path :: " << path << std::endl;
+        std::string path = req._res->cgi_exec(req);
         this->file.open(path.c_str(), std::ios::in);
         if(!file.is_open())
         {
-            //set 403
-            std::cout << "file not open" << std::endl;
-            exit(1);
+            req.statuscode = 403;
+            req.SetErrorStatusCode(403);
+            req.setStatusCodePath(req);
+            req.op = 4;
         }
         else
-            this->isfileopen(true);
+            req._isOpen= true;
     }
-    if(this->_isOpen)
+    if(req._isOpen)
     {
-        if(this->headerSent == false){
+        if(req.headerSent == false){
        res = req._res->getStatusCode();
        res.append(req._res->getContentType());
        res.append(req._res->getContentLenght());
        res.append("\r\n");
-        this->headerSent = true;  
+        req.headerSent = true;  
         }
         
-        if(this->headerSent == true && !this->_isDone){
+        if(req.headerSent == true && !req._isDone){
             
             this->file.read(this->buffer, 1024);
             std::streamsize bytesRead = this->file.gcount();
@@ -327,13 +226,13 @@ std::string response::serveCgi(request &req)
              { 
                 std::string chunk = std::string(this->buffer,bytesRead);
                  res.append(chunk);
-				this->isfileopen(true);
+				req._isOpen= true;
             }
             else
             {
-                this->bodyisDone(true);
+                req._isDone = true;
                 this->file.close();
-                this->isfileopen(false);
+                req._isOpen = false;
         
             }
         }

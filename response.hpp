@@ -18,14 +18,10 @@ class response
         pid_t pid;
         int status;
         int op;
-        std::string Content_Lenght_cgi;
-        std::string Content_Type_cgi;
-        std::string statuscode_cgi;
-        std::string Location_cgi;
-        std::string Cookie_cgi;
-        std::string body_cgi;
+        int statuscode;
      char buffer[BUFF_SIZE];
       std::ifstream file;
+      std::ifstream file_;
       std::string _buffer;
       std::string _body;
       std::string _autoindex;
@@ -43,10 +39,35 @@ class response
     public:
     response():_isOpen(false),headerSent(false),_isDone(false){};
     ~response(){};
-    void    SetStatusCode(std::string _status)
+    void    SetStatusCode(int _status)
     {
-        _statuscode = _status;
+        if(_status == 200)
+        _statuscode = "HTTP/1.1 200 OK\r\n";
+        else if(_status == 201)
+        _statuscode = "HTTP/1.1 201 Created\r\n";
+        else if(_status == 301)
+        _statuscode = "HTTP/1.1 301 Moved Permanently\r\n";
+        else if(_status == 304)
+        _statuscode = "HTTP/1.1 304 Not Modified\r\n";
+        else if(_status == 400)
+        _statuscode = "HTTP/1.1 400 Bad Request\r\n";
+        else if(_status == 401)
+        _statuscode = "HTTP/1.1 401 Unauthorized\r\n";
+        else if(_status == 403)
+        _statuscode = "HTTP/1.1 403 Forbidden\r\n";
+        else if(_status == 404)
+        _statuscode = "HTTP/1.1 404 Not Found\r\n";
+        else if(_status == 405)
+        _statuscode = "HTTP/1.1 405 Method Not Allowed\r\n";
+        else if(_status == 500)
+        _statuscode = "HTTP/1.1 500 Internal Server Error\r\n";
+        else if(_status == 501)
+        _statuscode = "HTTP/1.1 501 Not Implemented\r\n";
     };
+    void methodDelete(request& req);
+    std::string error_page(request &req);
+    void MethodPost(request& req);
+    std::string setStatusCodePath(request &req);
     void setContentLenght(request &req);
     std::string  send_response_body(request &req);
     void    set_get_con_type(request &req);
@@ -59,6 +80,7 @@ class response
     std::string get_body();
     void    autoindex(request &req);
     std::string get_autoindex();
+    std::string setErrorContentLenght(std::string path);
     void setContentType(request &req)
     {
         std::map<std::string, std::string> con_type = req.getHeaders();
@@ -89,7 +111,7 @@ class response
     }
      void isheadersdone(bool isopen)
     {
-        this->_isOpen = isopen;
+        this->headerSent = isopen;
     }
      void bodyisDone(bool isDone)
     {
@@ -102,7 +124,9 @@ class response
 // }
 void    GetMethod(request &req);
  void    SendResponse(int sck);
-
+ std::string indexfile(request &req);
+ void setContentLenghtindex(request &req);
+        std::string  setStatusCodePath(int status);
         void setContentLenghtCgi(std::string body);
         void setContentTypeCgi(std::string body); 
         void    setStatusCodeCgi(std::string body);
